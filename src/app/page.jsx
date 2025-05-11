@@ -30,9 +30,9 @@ export default function Home() {
     }
 
     // Initialize socket connection
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'https://dot-box-server.onrender.com')
+    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'https://dot-box-server.onrender.com')     
     console.log('Socket connection established')
-
+    
     socket.on('error', (data) => {
       console.log('Socket error event received:', data)
       setError(data.message)
