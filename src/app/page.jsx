@@ -30,7 +30,7 @@ export default function Home() {
     }
 
     // Initialize socket connection
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000')
+    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'https://dot-box-server.onrender.com')
     console.log('Socket connection established')
 
     socket.on('error', (data) => {
