@@ -1,131 +1,141 @@
 'use client';
-import { useState, useEffect } from 'react'
-import { v4 as uuidv4 } from 'uuid'
-import io from 'socket.io-client'
+import { useState, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import io from 'socket.io-client';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
-let socket
+let socket;
 
 export default function Home() {
-  const router = useRouter()
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [userId] = useState(() => {
-    // Generate or retrieve a user ID
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('userId') || uuidv4()
+      return localStorage.getItem('userId') || uuidv4();
     }
-    return uuidv4()
-  })
-  const [username, setUsername] = useState('')
-  const [gridSize, setGridSize] = useState(5)
-  const [gameCode, setGameCode] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+    return uuidv4();
+  });
+  const [gridSize, setGridSize] = useState(5);
+  const [gameCode, setGameCode] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [localUsername, setLocalUsername] = useState('');
 
   useEffect(() => {
-    console.log('useEffect: Component mounted')
-    // Save the user ID to localStorage
+    console.log('useEffect: Component mounted');
     if (typeof window !== 'undefined') {
-      localStorage.setItem('userId', userId)
-      console.log('User ID saved to localStorage:', userId)
+      localStorage.setItem('userId', userId);
+      console.log('User ID saved to localStorage:', userId);
     }
 
-    // Initialize socket connection
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'https://dot-box-server.onrender.com')     
-    console.log('Socket connection established')
-    
+    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'https://dot-box-server.onrender.com');
+    console.log('Socket connection established');
+
     socket.on('error', (data) => {
-      console.log('Socket error event received:', data)
-      setError(data.message)
-      setIsLoading(false)
-      console.log('Error state updated:', data.message)
-      console.log('Loading state updated: false')
-    })
+      console.log('Socket error event received:', data);
+      setError(data.message);
+      setIsLoading(false);
+      console.log('Error state updated:', data.message);
+      console.log('Loading state updated: false');
+    });
 
     socket.on('gameCreated', (data) => {
-      console.log('Game created event received:', data)
-      router.push(`/game/${data.code}`)
-      console.log('Navigated to game page:', `/game/${data.code}`)
-    })
+      console.log('Game created event received:', data);
+      router.push(`/game/${data.code}`);
+      console.log('Navigated to game page:', `/game/${data.code}`);
+    });
 
     socket.on('gameJoined', (data) => {
-      console.log('Game joined event received:', data) 
-      router.push(`/game/${data.gameState.code}`)
-      console.log('Navigated to game page:', `/game/${data.gameState.code}`)
-    })
+      console.log('Game joined event received:', data);
+      router.push(`/game/${data.gameState.code}`);
+      console.log('Navigated to game page:', `/game/${data.gameState.code}`);
+    });
 
     return () => {
-      console.log('useEffect: Component unmounting')
-      socket.off('error')
-      socket.off('gameCreated')
-      socket.off('gameJoined')
-      console.log('Socket event listeners removed')
+      console.log('useEffect: Component unmounting');
+      socket.off('error');
+      socket.off('gameCreated');
+      socket.off('gameJoined');
+      console.log('Socket event listeners removed');
+    };
+  }, [userId, router]);
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.name) {
+      const firstName = session.user.name.split(' ')[0];
+      setLocalUsername(firstName);
+    } else if (status === 'unauthenticated') {
+      setLocalUsername('');
+      // Redirect to the login page if not authenticated
+      router.push('/login');
     }
-  }, [userId, router])
+  }, [session, status, router]);
 
   const handleCreateGame = (e) => {
-    console.log('Create game button clicked')
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    console.log('Loading state updated: true')
-    console.log('Error state updated: ""')
-    
-    if (!username.trim()) {
-      console.log('Username is empty')
-      setError('Please enter a username')
-      setIsLoading(false)
-      console.log('Error state updated: "Please enter a username"')
-      console.log('Loading state updated: false')
-      return
+    console.log('Create game button clicked');
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    console.log('Loading state updated: true');
+    console.log('Error state updated: ""');
+
+    if (!localUsername.trim()) {
+      console.log('Username not available from session');
+      setError('Username is required. Please sign in.');
+      setIsLoading(false);
+      console.log('Error state updated: "Username is required. Please sign in."');
+      console.log('Loading state updated: false');
+      return;
     }
 
-    console.log('Creating game with data:', { gridSize, userId, username })
-    socket.emit('createGame', { gridSize, userId, username })
-  }
+    console.log('Creating game with data:', { gridSize, userId, username: localUsername });
+    socket.emit('createGame', { gridSize, userId, username: localUsername });
+  };
 
   const handleJoinGame = (e) => {
-    console.log('Join game button clicked')
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    console.log('Loading state updated: true')
-    console.log('Error state updated: ""')
-    
-    if (!username.trim()) {
-      console.log('Username is empty')
-      setError('Please enter a username')
-      setIsLoading(false)
-      console.log('Error state updated: "Please enter a username"')
-      console.log('Loading state updated: false')
-      return
+    console.log('Join game button clicked');
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    console.log('Loading state updated: true');
+    console.log('Error state updated: ""');
+
+    if (!localUsername.trim()) {
+      console.log('Username not available from session');
+      setError('Username is required. Please sign in.');
+      setIsLoading(false);
+      console.log('Error state updated: "Username is required. Please sign in."');
+      console.log('Loading state updated: false');
+      return;
     }
 
     if (!gameCode.trim()) {
-      console.log('Game code is empty')
-      setError('Please enter a game code')
-      setIsLoading(false)
-      console.log('Error state updated: "Please enter a game code"')
-      console.log('Loading state updated: false')
-      return
+      console.log('Game code is empty');
+      setError('Please enter a game code');
+      setIsLoading(false);
+      console.log('Error state updated: "Please enter a game code"');
+      console.log('Loading state updated: false');
+      return;
     }
 
-    console.log('Joining game with data:', { code: gameCode.toUpperCase(), userId, username })
-    socket.emit('joinGame', { code: gameCode.toUpperCase(), userId, username })
-  }
-
-  const handleUsernameChange = (e) => {
-    console.log('Username changed:', e.target.value)
-    setUsername(e.target.value)
-  }
+    console.log('Joining game with data:', { code: gameCode.toUpperCase(), userId, username: localUsername });
+    socket.emit('joinGame', { code: gameCode.toUpperCase(), userId, username: localUsername });
+  };
 
   const handleGridSizeChange = (e) => {
-    console.log('Grid size changed:', parseInt(e.target.value))
-    setGridSize(parseInt(e.target.value))
-  }
+    console.log('Grid size changed:', parseInt(e.target.value));
+    setGridSize(parseInt(e.target.value));
+  };
 
   const handleGameCodeChange = (e) => {
-    console.log('Game code changed:', e.target.value.toUpperCase())
-    setGameCode(e.target.value.toUpperCase())
+    console.log('Game code changed:', e.target.value.toUpperCase());
+    setGameCode(e.target.value.toUpperCase());
+  };
+
+  // Render nothing or a loading state while redirecting
+  if (status === 'unauthenticated') {
+    return <div>Redirecting to login...</div>;
   }
 
   return (
@@ -162,22 +172,26 @@ export default function Home() {
             </div>
           )}
 
-          <div className="mb-6">
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Your Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={handleUsernameChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              required
-            />
-          </div>
+          {status === 'loading' ? (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700">
+                Your Username
+              </label>
+              <input
+                type="text"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value="Loading..."
+                readOnly
+              />
+            </div>
+          ) : status === 'authenticated' ? (
+            <div className="mb-6 flex flex-row">
+              <label className="block text-sm font-medium text-gray-700">
+                Your Username : 
+              </label>
+              <p className='font-bold text-gray-700'> { localUsername}</p>
+            </div>
+          ) : null /* We handle redirection, so no need to display "Not Signed In" here */}
 
           <div className="space-y-6">
             <div>
@@ -206,11 +220,20 @@ export default function Home() {
                 <div>
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isLoading || status !== 'authenticated'}
+                    className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                      status === 'authenticated'
+                        ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
                   >
                     {isLoading ? 'Creating...' : 'Create Game'}
                   </button>
+                  {status !== 'authenticated' && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Please sign in to create a game.
+                    </p>
+                  )}
                 </div>
               </form>
             </div>
@@ -248,11 +271,20 @@ export default function Home() {
                 <div>
                   <button
                     type="submit"
-                    disabled={isLoading}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isLoading || status !== 'authenticated'}
+                    className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                      status === 'authenticated'
+                        ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
+                        : 'bg-gray-400 cursor-not-allowed'
+                    }`}
                   >
                     {isLoading ? 'Joining...' : 'Join Game'}
                   </button>
+                  {status !== 'authenticated' && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Please sign in to join a game.
+                    </p>
+                  )}
                 </div>
               </form>
             </div>
@@ -260,6 +292,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
