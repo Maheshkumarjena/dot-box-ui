@@ -253,7 +253,7 @@ const GameGrid = ({
   }
 
   return (
-    <div className="relative">
+    <div className="relative ">
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}
@@ -270,7 +270,7 @@ const GameGrid = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`border border-gray-200 rounded-md ${
+        className={`border border-gray-200 mx-auto rounded-md ${
           currentPlayerId === userId ? 'cursor-pointer' : 'cursor-not-allowed'
         } ${currentPlayerId !== userId ? 'pointer-events-none opacity-50' : ''}`}
       />
