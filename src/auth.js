@@ -1,12 +1,19 @@
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+import dotenv from "dotenv";
+dotenv.config();
 
-import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
- 
+
+console.log(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
+console.log(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET);
+
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-providers: [
+  providers: [
     Google({
-      clientId: "811424453906-9i43pt6th3r1l0s5ek7b3lflnvcr1rn0.apps.googleusercontent.com",
-      clientSecret: "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",
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ,
+      clientSecret: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET ,
     }),
     // ... other providers
-  ],})
+  ],
+});
