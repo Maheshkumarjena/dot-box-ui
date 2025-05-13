@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import io from 'socket.io-client'
 import { useParams } from 'next/navigation'
 import GameGrid from '@/components/GameGrid'
-import { motion, AnimatePresence } from 'framer-motion'
 
 let socket
 
@@ -29,7 +28,6 @@ export default function GamePage() {
   const [playerColors, setPlayerColors] = useState({})
   const [boxesCompleted, setBoxesCompleted] = useState(0)
   const [totalBoxes, setTotalBoxes] = useState(0)
-  // const [score,setScore] = useState({}) // Remove this
 
   // Modern color palette with neon effects
   const colorPalette = [
@@ -169,19 +167,13 @@ export default function GamePage() {
     socket.emit('makeMove', { code, line: lineId, userId })
   }
 
-  // The scores are now directly in the players state
-  // const scores = Object.fromEntries(players.map(p => [p.userId, p.score]));
   console.log('players with scores in GamePage:', players);
 
 
   if (!gameState) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
+        <div className="text-center">
           <div className="animate-pulse flex space-x-4">
             <div className="flex-1 space-y-6 py-1">
               <div className="h-8 bg-indigo-800 rounded w-3/4 mx-auto"></div>
@@ -190,7 +182,7 @@ export default function GamePage() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     )
   }
@@ -199,37 +191,26 @@ export default function GamePage() {
     <div className="min-h-screen bg-gray-900 text-gray-100 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header Section */}
-        <motion.div
-          initial={{ y: -20 }}
-          animate={{ y: 0 }}
-          className="text-center mb-8"
-        >
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
             Game: {code}
           </h1>
 
-          <AnimatePresence>
-            {message && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className={`mt-4 text-lg font-medium ${currentPlayerId === userId ? 'text-blue-400' : 'text-purple-400'
-                  }`}
-              >
-                {message}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {message && (
+            <p
+              className={`mt-4 text-lg font-medium ${currentPlayerId === userId ? 'text-blue-400' : 'text-purple-400'
+                }`}
+            >
+              {message}
+            </p>
+          )}
 
           {error && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <div
               className="mt-4 bg-red-900/50 border-l-4 border-red-500 p-4 rounded-r-lg"
             >
               <p className="text-red-300">{error}</p>
-            </motion.div>
+            </div>
           )}
 
           {/* Game stats with glow effect */}
@@ -247,78 +228,68 @@ export default function GamePage() {
               </p>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Game ended modal */}
-        <AnimatePresence>
-          {gameEnded && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+        {gameEnded && (
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
+          >
+            <div
+              className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-xl shadow-blue-500/10"
             >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                className="bg-gray-800 border border-gray-700 rounded-xl p-6 max-w-md w-full shadow-xl shadow-blue-500/10"
-              >
-                <h2 className="text-2xl font-bold mb-4 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-                  {isTie ? "Game Tied!" : "Victory!"}
-                </h2>
+              <h2 className="text-2xl font-bold mb-4 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+                {isTie ? "Game Tied!" : "Victory!"}
+              </h2>
 
-                {!isTie && winner && (
-                  <div className="mb-6 text-center">
-                    <p className="text-lg">
-                      Winner: <span className="font-bold text-blue-400">
-                        {players.find(p => p.userId === winner)?.user?.username}
-                      </span>
-                    </p>
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3 text-gray-300 ">Final Scores</h3>
-                  <ul className="space-y-3">
-                    {players.map(player => (
-                      <li key={player.userId} className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg">
-                        <span className="flex items-center">
-                          <span
-                            className="w-3 h-3 rounded-full mr-3 flex-shrink-0 shadow-sm shadow-current"
-                            style={{
-                              backgroundColor: playerColors[player.userId],
-                              boxShadow: `0 0 8px ${playerColors[player.userId]}`
-                            }}
-                          />
-                          <span className={`${player.userId === userId ? 'text-blue-400' : 'text-gray-300'}`}>
-                            {player.user?.username}
-                            {player.userId === userId && " (You)"}
-                          </span>
-                        </span>
-                        <span className="font-bold text-lg" style={{ color: playerColors[player.userId] }}>
-                          {player.score || 0} {/* Access score directly from player object */}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+              {!isTie && winner && (
+                <div className="mb-6 text-center">
+                  <p className="text-lg">
+                    Winner: <span className="font-bold text-blue-400">
+                      {players.find(p => p.userId === winner)?.user?.username}
+                    </span>
+                  </p>
                 </div>
+              )}
 
-                <button
-                  onClick={() => router.push('/')}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg shadow-blue-500/20"
-                >
-                  Return to Lobby
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3 text-gray-300 ">Final Scores</h3>
+                <ul className="space-y-3">
+                  {players.map(player => (
+                    <li key={player.userId} className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg">
+                      <span className="flex items-center">
+                        <span
+                          className="w-3 h-3 rounded-full mr-3 flex-shrink-0 shadow-sm shadow-current"
+                          style={{
+                            backgroundColor: playerColors[player.userId],
+                            boxShadow: `0 0 8px ${playerColors[player.userId]}`
+                          }}
+                        />
+                        <span className={`${player.userId === userId ? 'text-blue-400' : 'text-gray-300'}`}>
+                          {player.user?.username}
+                          {player.userId === userId && " (You)"}
+                        </span>
+                      </span>
+                      <span className="font-bold text-lg" style={{ color: playerColors[player.userId] }}>
+                        {player.score || 0} {/* Access score directly from player object */}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                onClick={() => router.push('/')}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg shadow-blue-500/20"
+              >
+                Return to Lobby
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Players section */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
+        <div
           className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 border border-gray-700 shadow-lg"
         >
           <div className="flex justify-between items-center mb-4">
@@ -338,14 +309,13 @@ export default function GamePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {players.map((player) => (
-              <motion.div
+              <div
                 key={player.userId}
-                whileHover={{ scale: 1.02 }}
                 className={`p-4 rounded-lg transition-all duration-300 ${currentPlayerId === player.userId
                   ? 'bg-blue-900/20 border border-blue-500/30 shadow-lg shadow-blue-500/10'
                   : 'bg-gray-700/30 border border-gray-600/30'
-                } ${player.userId === userId ? 'ring-1 ring-blue-400/30' : ''
-                }`}
+                  } ${player.userId === userId ? 'ring-1 ring-blue-400/30' : ''
+                  }`}
               >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
@@ -375,16 +345,13 @@ export default function GamePage() {
                     </span>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.div>
+        </div>
 
         {/* Game board */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+        <div
           className="rounded-xl p-6 mx-auto border border-gray-700 shadow-lg overflow-auto"
         >
           <GameGrid
@@ -393,11 +360,11 @@ export default function GamePage() {
             boxes={gameState?.boxes}
             currentPlayerId={currentPlayerId}
             userId={userId}
-            players={players} 
+            players={players}
             playerColors={playerColors}
             onLineClick={handleLineClick}
           />
-        </motion.div>
+        </div>
         {/* Other UI elements like player info, messages, etc. can also be placed here */}
       </div>
     </div>

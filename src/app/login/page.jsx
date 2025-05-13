@@ -1,5 +1,4 @@
 import { signIn } from "@/auth";
-import { motion } from 'framer-motion';
 
 export default function SignIn() {
   return (
