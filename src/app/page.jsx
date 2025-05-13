@@ -9,22 +9,64 @@ import { motion } from 'framer-motion';
 let socket;
 
 export default function Home() {
-  const router = useRouter();
+
+  const USER_STORAGE_KEY = 'user';
+const STORAGE_EXPIRY_KEY = 'userExpiry';
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000; // Milliseconds in a week
+const USER_ID_STORAGE_KEY = 'userId'; 
+
+
+ const router = useRouter();
   const { data: session, status } = useSession();
-  const [userId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const uid=localStorage.getItem('userId') || uuidv4();
-      console.log('User ID retrieved from localStorage:', uid);
-      localStorage.setItem('userId', uid);
-      return uid;
+  const [userId, setUserId] = useState(() => {
+    if (typeof window !== 'undefined' && session?.user?.email) {
+      const storedUserId = localStorage.getItem(USER_ID_STORAGE_KEY);
+      if (storedUserId === session.user.email) {
+        console.log('User ID retrieved from localStorage:', storedUserId);
+        return storedUserId;
+      }
     }
-    return uuidv4();
+    if (session?.user?.email) {
+      console.log('User ID (email from session):', session.user.email);
+      localStorage.setItem(USER_ID_STORAGE_KEY, session.user.email);
+      return session.user.email;
+    }
+    // Fallback if no session or email yet (shouldn't happen after authentication)
+    return null;
   });
   const [gridSize, setGridSize] = useState(5);
   const [gameCode, setGameCode] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [localUsername, setLocalUsername] = useState('');
+
+  useEffect(() => {
+    if (session?.user) {
+      console.log('User session:', session);
+      console.log('User ID (email):', session.user.email);
+      console.log('User Name:', session.user.name);
+      console.log('User Email:', session.user.email);
+      console.log('User Image:', session.user.image);
+
+      // Store user data in local storage with an expiry timestamp
+      const userData = {
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+        // You might want to include other relevant user data
+      };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+      console.log('User data saved to local storage');
+      localStorage.setItem(STORAGE_EXPIRY_KEY, Date.now() + ONE_WEEK_MS);
+
+      // Ensure userId state is updated with the email
+      if (session.user.email && userId !== session.user.email) {
+        setUserId(session.user.email);
+        localStorage.setItem(USER_ID_STORAGE_KEY, session.user.email);
+      }
+    }
+  }, [session, userId]); // Added userId to the dependency array
+
 
   useEffect(() => {
     console.log('useEffect: Component mounted');

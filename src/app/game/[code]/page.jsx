@@ -40,137 +40,115 @@ export default function GamePage() {
   ]
 
   useEffect(() => {
-    console.log('useEffect [code, userId, router] triggered');
-    if (!code || !userId) {
-      console.log('Code or userId is missing, returning');
-      return;
-    }
+    if (!code || !userId) return
+    console.log('use effect triggered ...................')
 
-    console.log('Attempting to connect to WebSocket');
+
     socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000', {
       transports: ['websocket'],
       upgrade: false
     })
 
-    socket.on('connect', () => {
-      console.log('WebSocket connected');
-      console.log('Emitting joinGame event with code:', code, 'and userId:', userId);
-      socket.emit('joinGame', { code, userId });
-    });
-
-    socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('WebSocket connection error:', err);
-      setError('Failed to connect to the game server.');
-      setTimeout(() => {
-        setError('');
-        router.push('/');
-      }, 5000);
-    });
+    socket.emit('joinGame', { code, userId })
 
     socket.on('gameJoined', (data) => {
-      console.log('Received gameJoined event:', data);
       const { gameState, player } = data
-      setGameState(gameState);
-      setPlayers(gameState.players);
-      setCurrentPlayerId(gameState.players[gameState.currentPlayerIndex]?.userId);
+      setGameState(gameState)
+      setPlayers(gameState.players)
+      setCurrentPlayerId(gameState.players[gameState.currentPlayerIndex]?.userId)
 
       // Initialize player colors
-      const colors = {};
+      const colors = {}
       gameState.players.forEach((p, index) => {
-        colors[p.userId] = colorPalette[index % colorPalette.length];
-      });
-      setPlayerColors(colors);
+        colors[p.userId] = colorPalette[index % colorPalette.length]
+      })
+      setPlayerColors(colors)
 
       // Calculate total boxes
-      const gridSize = gameState.gridSize;
-      const total = (gridSize - 1) * (gridSize - 1);
-      setTotalBoxes(total);
+      const gridSize = gameState.gridSize
+      const total = (gridSize - 1) * (gridSize - 1)
+      setTotalBoxes(total)
 
       // Calculate completed boxes
-      const completed = Object.values(gameState.boxes).filter(b => b.owner).length;
-      setBoxesCompleted(completed);
+      const completed = Object.values(gameState.boxes).filter(b => b.owner).length
+      setBoxesCompleted(completed)
 
-      setMessage(`Game started! It's ${gameState.players[0]?.user?.username || 'Player 1'}'s turn`);
-    });
+      setMessage(`Game started! It's ${gameState.players[0]?.user?.username || 'Player 1'}'s turn`)
+    })
 
     socket.on('playerJoined', (data) => {
-      console.log('Received playerJoined event:', data);
-      setPlayers(data.gameState.players);
+      setPlayers(data.gameState.players)
 
       // Update player colors for new player
-      const newPlayer = data.player;
-      const newColorIndex = data.gameState.players.findIndex(p => p.userId === newPlayer.userId);
+      const newPlayer = data.player
+      const newColorIndex = data.gameState.players.findIndex(p => p.userId === newPlayer.userId)
       setPlayerColors(prev => ({
         ...prev,
         [newPlayer.userId]: colorPalette[newColorIndex % colorPalette.length]
-      }));
-    });
+      }))
+    })
 
     socket.on('gameStateUpdated', (data) => {
-      console.log('Received gameStateUpdated event:', data);
-      setGameState(data.gameState);
+      setGameState(data.gameState)
 
       // Update completed boxes count
-      const completed = Object.values(data.gameState.boxes).filter(b => b.owner).length;
-      setBoxesCompleted(completed);
-    });
+      const completed = Object.values(data.gameState.boxes).filter(b => b.owner).length
+      setBoxesCompleted(completed)
+    })
 
     socket.on('nextPlayer', (data) => {
-      console.log('Received nextPlayer event:', data);
-      setCurrentPlayerId(data.playerId);
-      const currentPlayer = players.find(p => p.userId === data.playerId);
+      setCurrentPlayerId(data.playerId)
+      const currentPlayer = players.find(p => p.userId === data.playerId)
       if (currentPlayer) {
         setMessage(currentPlayer.userId === userId
           ? 'Your turn!'
-          : `${currentPlayer.user?.username || 'Opponent'}'s turn`);
+          : `${currentPlayer.user?.username || 'Opponent'}'s turn`)
       }
-    });
+    })
 
     socket.on('invalidMove', (data) => {
-      console.log('Received invalidMove event:', data);
-      setError(data.message);
-      setTimeout(() => setError(''), 3000);
-    });
+      setError(data.message)
+      setTimeout(() => setError(''), 3000)
+    })
 
     socket.on('gameEnded', (data) => {
-      console.log('Received gameEnded event:', data);
-      setGameEnded(true);
-      setIsTie(data.isTie);
-      setWinner(data.winnerId);
+      setGameEnded(true)
+      setIsTie(data.isTie)
+      setWinner(data.winnerId)
       setMessage(data.isTie
         ? 'Game ended in a tie!'
-        : `${players.find(p => p.userId === data.winnerId)?.user?.username || 'Someone'} wins!`);
-    });
+        : `${players.find(p => p.userId === data.winnerId)?.user?.username || 'Someone'} wins!`)
+    })
 
     socket.on('error', (data) => {
-      console.error('Received error event:', data);
-      setError(data.message);
+      setError(data.message)
       setTimeout(() => {
-        setError('');
-        router.push('/');
-      }, 3000);
-    });
+        setError('')
+        router.push('/')
+      }, 3000)
+    })
 
+    
     return () => {
-      console.log('useEffect cleanup: disconnecting socket');
       if (socket) {
-        socket.disconnect();
+        socket.disconnect()
       }
-    };
-  }, [code, userId, router]);
-
-  const handleLineClick = (lineId) => {
-    if (!gameState || currentPlayerId !== userId) {
-      console.log('handleLineClick prevented: gameState or not your turn');
-      return;
     }
-    console.log('Emitting makeMove event with code:', code, 'line:', lineId, 'userId:', userId);
-    socket.emit('makeMove', { code, line: lineId, userId });
-  };
+    
+    
+    
+  }, [code, userId, router])
+  
+  const handleLineClick = (lineId) => {
+    if (!gameState || currentPlayerId !== userId) return
+
+    setTimeout(() => {
+        console.log("boxes at game page ====================================================================>",players)
+
+    }, 5000);
+    socket.emit('makeMove', { code, line: lineId, userId })
+  }
+
 
 
   if (!gameState) {
@@ -193,6 +171,7 @@ export default function GamePage() {
       </div>
     )
   }
+
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 py-8">
@@ -367,7 +346,7 @@ export default function GamePage() {
                       </h3>
                       <p className="text-xs text-gray-400">
                         Score: <span className="font-bold" style={{ color: playerColors[player.userId] }}>
-                          {gameState?.scores?.[player.userId] || 0}
+                          {players?.scores?.[player.userId] || 0}
                         </span>
                       </p>
                     </div>

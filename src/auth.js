@@ -16,7 +16,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
  callbacks: {
   async redirect({ url, baseUrl }) {
-    return process.env.NEXT_PUBLIC_BASE_URL || 'https://dot-box-ui.vercel.app';
+    return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   },
   async signIn({ account, profile, user, credentials }) {
     return true;
