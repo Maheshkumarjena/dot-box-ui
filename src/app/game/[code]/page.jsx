@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import io from 'socket.io-client'
 import { useParams } from 'next/navigation'
 import GameGrid from '@/components/GameGrid'
-import { motion, AnimatePresence } from 'framer-motion' // Import motion and AnimatePresence
+import { motion, AnimatePresence } from 'framer-motion'
 
 let socket
 
@@ -29,6 +29,7 @@ export default function GamePage() {
   const [playerColors, setPlayerColors] = useState({})
   const [boxesCompleted, setBoxesCompleted] = useState(0)
   const [totalBoxes, setTotalBoxes] = useState(0)
+  // const [score,setScore] = useState({}) // Remove this
 
   // Modern color palette with neon effects
   const colorPalette = [
@@ -43,7 +44,6 @@ export default function GamePage() {
     if (!code || !userId) return
     console.log('use effect triggered ...................')
 
-
     socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000', {
       transports: ['websocket'],
       upgrade: false
@@ -52,9 +52,10 @@ export default function GamePage() {
     socket.emit('joinGame', { code, userId })
 
     socket.on('gameJoined', (data) => {
+      console.log('gameJoined data:', data);
       const { gameState, player } = data
       setGameState(gameState)
-      setPlayers(gameState.players)
+      setPlayers(gameState.players.map(p => ({ ...p, score: 0 }))) // Initialize score
       setCurrentPlayerId(gameState.players[gameState.currentPlayerIndex]?.userId)
 
       // Initialize player colors
@@ -77,7 +78,8 @@ export default function GamePage() {
     })
 
     socket.on('playerJoined', (data) => {
-      setPlayers(data.gameState.players)
+      console.log('playerJoined data:', data);
+      setPlayers(data.gameState.players.map(p => ({ ...p, score: 0 }))) // Initialize score for new player
 
       // Update player colors for new player
       const newPlayer = data.player
@@ -89,7 +91,20 @@ export default function GamePage() {
     })
 
     socket.on('gameStateUpdated', (data) => {
+      console.log('gameStateUpdated data:', data);
       setGameState(data.gameState)
+
+      // Update players with scores
+      const updatedPlayers = data.gameState.players.map(player => {
+        let score = 0;
+        Object.values(data.gameState.boxes).forEach(box => {
+          if (box.owner === player.userId) {
+            score++;
+          }
+        });
+        return { ...player, score };
+      });
+      setPlayers(updatedPlayers);
 
       // Update completed boxes count
       const completed = Object.values(data.gameState.boxes).filter(b => b.owner).length
@@ -97,6 +112,7 @@ export default function GamePage() {
     })
 
     socket.on('nextPlayer', (data) => {
+      console.log('nextPlayer data:', data);
       setCurrentPlayerId(data.playerId)
       const currentPlayer = players.find(p => p.userId === data.playerId)
       if (currentPlayer) {
@@ -107,11 +123,13 @@ export default function GamePage() {
     })
 
     socket.on('invalidMove', (data) => {
+      console.log('invalidMove data:', data);
       setError(data.message)
       setTimeout(() => setError(''), 3000)
     })
 
     socket.on('gameEnded', (data) => {
+      console.log('gameEnded data:', data);
       setGameEnded(true)
       setIsTie(data.isTie)
       setWinner(data.winnerId)
@@ -121,6 +139,7 @@ export default function GamePage() {
     })
 
     socket.on('error', (data) => {
+      console.log('socket error data:', data);
       setError(data.message)
       setTimeout(() => {
         setError('')
@@ -128,27 +147,31 @@ export default function GamePage() {
       }, 3000)
     })
 
-    
+
     return () => {
       if (socket) {
         socket.disconnect()
       }
     }
-    
-    
-    
+
+
   }, [code, userId, router])
-  
+
   const handleLineClick = (lineId) => {
     if (!gameState || currentPlayerId !== userId) return
 
-    setTimeout(() => {
-        console.log("boxes at game page ====================================================================>",players)
+    console.log('handleLineClick lineId:', lineId);
+    console.log('handleLineClick gameState:', gameState);
+    console.log('handleLineClick currentPlayerId:', currentPlayerId);
+    console.log('handleLineClick userId:', userId);
+    console.log('handleLineClick players:', players);
 
-    }, 5000);
     socket.emit('makeMove', { code, line: lineId, userId })
   }
 
+  // The scores are now directly in the players state
+  // const scores = Object.fromEntries(players.map(p => [p.userId, p.score]));
+  console.log('players with scores in GamePage:', players);
 
 
   if (!gameState) {
@@ -172,7 +195,6 @@ export default function GamePage() {
     )
   }
 
-
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -192,9 +214,8 @@ export default function GamePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className={`mt-4 text-lg font-medium ${
-                  currentPlayerId === userId ? 'text-blue-400' : 'text-purple-400'
-                }`}
+                className={`mt-4 text-lg font-medium ${currentPlayerId === userId ? 'text-blue-400' : 'text-purple-400'
+                  }`}
               >
                 {message}
               </motion.p>
@@ -257,7 +278,7 @@ export default function GamePage() {
                 )}
 
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3 text-gray-300">Final Scores</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-gray-300 ">Final Scores</h3>
                   <ul className="space-y-3">
                     {players.map(player => (
                       <li key={player.userId} className="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg">
@@ -275,7 +296,7 @@ export default function GamePage() {
                           </span>
                         </span>
                         <span className="font-bold text-lg" style={{ color: playerColors[player.userId] }}>
-                          {gameState?.scores?.[player.userId] || 0}
+                          {player.score || 0} {/* Access score directly from player object */}
                         </span>
                       </li>
                     ))}
@@ -320,12 +341,10 @@ export default function GamePage() {
               <motion.div
                 key={player.userId}
                 whileHover={{ scale: 1.02 }}
-                className={`p-4 rounded-lg transition-all duration-300 ${
-                  currentPlayerId === player.userId
-                    ? 'bg-blue-900/20 border border-blue-500/30 shadow-lg shadow-blue-500/10'
-                    : 'bg-gray-700/30 border border-gray-600/30'
-                } ${
-                  player.userId === userId ? 'ring-1 ring-blue-400/30' : ''
+                className={`p-4 rounded-lg transition-all duration-300 ${currentPlayerId === player.userId
+                  ? 'bg-blue-900/20 border border-blue-500/30 shadow-lg shadow-blue-500/10'
+                  : 'bg-gray-700/30 border border-gray-600/30'
+                } ${player.userId === userId ? 'ring-1 ring-blue-400/30' : ''
                 }`}
               >
                 <div className="flex justify-between items-center">
@@ -338,15 +357,14 @@ export default function GamePage() {
                       }}
                     />
                     <div>
-                      <h3 className={`font-medium ${
-                        player.userId === userId ? 'text-blue-400' : 'text-gray-300'
-                      }`}>
+                      <h3 className={`font-medium ${player.userId === userId ? 'text-blue-400' : 'text-gray-300'
+                        }`}>
                         {player.user?.username}
                         {player.userId === userId && " (You)"}
                       </h3>
                       <p className="text-xs text-gray-400">
                         Score: <span className="font-bold" style={{ color: playerColors[player.userId] }}>
-                          {players?.scores?.[player.userId] || 0}
+                          {player.score || 0} {/* Access score directly from player object */}
                         </span>
                       </p>
                     </div>
@@ -375,7 +393,7 @@ export default function GamePage() {
             boxes={gameState?.boxes}
             currentPlayerId={currentPlayerId}
             userId={userId}
-            players={players}
+            players={players} 
             playerColors={playerColors}
             onLineClick={handleLineClick}
           />
