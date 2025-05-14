@@ -170,6 +170,11 @@ const USER_ID_STORAGE_KEY = 'userId';
   }
 
   return (
+    <>
+    
+    <div className="bg-yellow-800 text-yellow-200 py-2 text-center text-sm">
+  ⚠️ This game is currently under development and may have bugs and errors. If anything fails, please try again. Thank you for your understanding and <a href="https://docs.google.com/forms/d/e/1FAIpQLSeNUqDIL_PeyU58mJeq897Kb5JyTcq3s6eZ4-4iyLfNWQtaVQ/viewform?usp=header" target="_blank" rel="noopener noreferrer" className="underline text-blue-400 hover:text-blue-300">Feedback</a>.
+</div>
     <div className="min-h-screen bg-gray-900 text-gray-100 py-8">
       <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -319,5 +324,7 @@ const USER_ID_STORAGE_KEY = 'userId';
         </motion.div>
       </div>
     </div>
+    </>
+
   );
 }
