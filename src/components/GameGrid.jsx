@@ -17,22 +17,41 @@ const GameGrid = ({
   const [dragStart, setDragStart] = useState(null)
   const [dragEnd, setDragEnd] = useState(null)
   const [hoverDot, setHoverDot] = useState(null)
+  const [containerWidth, setContainerWidth] = useState(0)
+  const [containerHeight, setContainerHeight] = useState(0)
 
   // Constants for drawing
-  const dotRadius = 5
-  const dotSpacing = 40
+  const dotRadius = 3
   const lineWidth = 2
   const boxPadding = 20
 
-  // Calculate canvas dimensions based on grid size and padding
-  const calculateCanvasSize = () => {
-    const calculatedWidth = (gridSize - 1) * dotSpacing + boxPadding * 2;
-    const calculatedHeight = (gridSize - 1) * dotSpacing + boxPadding * 2;
-    return {
-      width: calculatedWidth,
-      height: calculatedHeight,
-    };
+  // Calculate dot spacing dynamically based on grid size and the smaller of available width and height
+  const calculateDotSpacing = () => {
+    if (containerWidth > 0 && containerHeight > 0 && gridSize > 1) {
+      const availableSpace = Math.min(containerWidth, containerHeight) - 2 * boxPadding;
+      return availableSpace / (gridSize - 1);
+    }
+    return 35; // Default spacing
   };
+
+  const dotSpacing = calculateDotSpacing();
+
+  // Update container dimensions on resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasRef.current && canvasRef.current.parentElement) {
+        setContainerWidth(canvasRef.current.parentElement.offsetWidth);
+        setContainerHeight(canvasRef.current.parentElement.offsetHeight);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Draw the game grid
   useEffect(() => {
@@ -42,23 +61,30 @@ const GameGrid = ({
     }
 
     const ctx = canvas.getContext('2d')
-    const { width, height } = calculateCanvasSize();
 
-    // Set canvas dimensions
-    canvas.width = width
-    canvas.height = height
-    canvas.style.width = `${width}px`
-    canvas.style.height = `${height}px`
+    // Set canvas dimensions to be the size of the container
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    canvas.style.width = `${containerWidth}px`;
+    canvas.style.height = `${containerHeight}px`;
 
     // Clear canvas
-    ctx.clearRect(0, 0, width, height)
+    ctx.clearRect(0, 0, containerWidth, containerHeight)
+
+    const calculatedDotSpacing = calculateDotSpacing();
+
+    // Calculate adjusted box padding to center the grid
+    const gridWidth = (gridSize - 1) * calculatedDotSpacing;
+    const gridHeight = (gridSize - 1) * calculatedDotSpacing;
+    const adjustedBoxPaddingX = (containerWidth - gridWidth) / 2;
+    const adjustedBoxPaddingY = (containerHeight - gridHeight) / 2;
 
     // Draw dots
-    ctx.fillStyle = '#000'
+    ctx.fillStyle = '#DDDDDD'
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
-        const x = col * dotSpacing + boxPadding
-        const y = row * dotSpacing + boxPadding
+        const x = col * calculatedDotSpacing + adjustedBoxPaddingX
+        const y = row * calculatedDotSpacing + adjustedBoxPaddingY
         ctx.beginPath()
         ctx.arc(x, y, dotRadius, 0, Math.PI * 2)
         ctx.fill()
@@ -75,10 +101,10 @@ const GameGrid = ({
       const [row1, col1] = dot1.split('-').map(Number)
       const [row2, col2] = dot2.split('-').map(Number)
 
-      const x1 = col1 * dotSpacing + boxPadding
-      const y1 = row1 * dotSpacing + boxPadding
-      const x2 = col2 * dotSpacing + boxPadding
-      const y2 = row2 * dotSpacing + boxPadding
+      const x1 = col1 * calculatedDotSpacing + adjustedBoxPaddingX
+      const y1 = row1 * calculatedDotSpacing + adjustedBoxPaddingY
+      const x2 = col2 * calculatedDotSpacing + adjustedBoxPaddingX
+      const y2 = row2 * calculatedDotSpacing + adjustedBoxPaddingY
 
       ctx.strokeStyle = playerColors[line.playerId] || '#9CA3AF'
       ctx.lineWidth = lineWidth
@@ -95,9 +121,9 @@ const GameGrid = ({
       }
 
       const [row, col] = boxId.split('-').map(Number)
-      const x = col * dotSpacing + boxPadding + dotRadius
-      const y = row * dotSpacing + boxPadding + dotRadius
-      const size = dotSpacing - dotRadius * 2
+      const x = col * calculatedDotSpacing + adjustedBoxPaddingX + dotRadius
+      const y = row * calculatedDotSpacing + adjustedBoxPaddingY + dotRadius
+      const size = calculatedDotSpacing - dotRadius * 2
 
       // Draw filled box
       ctx.fillStyle = `${playerColors[box.owner]}30` // Add opacity
@@ -127,10 +153,10 @@ const GameGrid = ({
       const [row1, col1] = dragStart
       const [row2, col2] = dragEnd
 
-      const x1 = col1 * dotSpacing + boxPadding
-      const y1 = row1 * dotSpacing + boxPadding
-      const x2 = col2 * dotSpacing + boxPadding
-      const y2 = row2 * dotSpacing + boxPadding
+      const x1 = col1 * calculatedDotSpacing + adjustedBoxPaddingX
+      const y1 = row1 * calculatedDotSpacing + adjustedBoxPaddingY
+      const x2 = col2 * calculatedDotSpacing + adjustedBoxPaddingX
+      const y2 = row2 * calculatedDotSpacing + adjustedBoxPaddingY
 
       ctx.strokeStyle = `${playerColors[userId]}80`
       ctx.lineWidth = lineWidth
@@ -145,8 +171,8 @@ const GameGrid = ({
     // Highlight hover dot
     if (hoverDot) {
       const [row, col] = hoverDot
-      const x = col * dotSpacing + boxPadding
-      const y = row * dotSpacing + boxPadding
+      const x = col * calculatedDotSpacing + adjustedBoxPaddingX
+      const y = row * calculatedDotSpacing + adjustedBoxPaddingY
 
       ctx.fillStyle = playerColors[userId] || '#3B82F6'
       ctx.beginPath()
@@ -162,7 +188,7 @@ const GameGrid = ({
         }
       })
     }
-  }, [gridSize, lines, boxes, players, playerColors, isDragging, dragStart, dragEnd, hoverDot, userId, dotSpacing, boxPadding, calculateCanvasSize])
+  }, [gridSize, lines, boxes, players, playerColors, isDragging, dragStart, dragEnd, hoverDot, userId, containerWidth, containerHeight, calculateDotSpacing])
 
   // Get dot coordinates from mouse position
   const getDotFromCoords = (x, y) => {
@@ -175,17 +201,23 @@ const GameGrid = ({
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
 
+    const calculatedDotSpacing = calculateDotSpacing();
+    const gridWidth = (gridSize - 1) * calculatedDotSpacing;
+    const gridHeight = (gridSize - 1) * calculatedDotSpacing;
+    const adjustedBoxPaddingX = (containerWidth - gridWidth) / 2;
+    const adjustedBoxPaddingY = (containerHeight - gridHeight) / 2;
+
     // Find the nearest dot
     let nearestDot = null;
     let minDistance = Infinity;
 
     for (let row = 0; row < gridSize; row++) {
       for (let col = 0; col < gridSize; col++) {
-        const dotX = col * dotSpacing + boxPadding;
-        const dotY = row * dotSpacing + boxPadding;
+        const dotX = col * calculatedDotSpacing + adjustedBoxPaddingX;
+        const dotY = row * calculatedDotSpacing + adjustedBoxPaddingY;
         const distance = Math.sqrt((canvasX - dotX) ** 2 + (canvasY - dotY) ** 2);
 
-        if (distance < minDistance && distance < dotSpacing / 2) {
+        if (distance < minDistance && distance < calculatedDotSpacing / 2) {
           minDistance = distance;
           nearestDot = [row, col];
         }
@@ -281,7 +313,7 @@ const GameGrid = ({
   }
 
   return (
-    <div className="m-auto flex justify-center" style={{ maxWidth: '500px' }}> {/* Added maxWidth */}
+    <div className="relative flex justify-center items-center w-full h-full">
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}
@@ -298,10 +330,12 @@ const GameGrid = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`border border-gray-200 rounded-md ${currentPlayerId === userId ? 'cursor-pointer' : 'cursor-not-allowed'
+        className={` ${currentPlayerId === userId ? 'cursor-pointer' : 'cursor-not-allowed'
           } ${currentPlayerId !== userId ? 'pointer-events-none opacity-50' : ''}`}
         style={{
           display: 'block',
+          width: '100%',
+          height: '100%',
         }}
       />
     </div>

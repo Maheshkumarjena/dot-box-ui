@@ -5,6 +5,7 @@ import io from 'socket.io-client'
 import { useParams } from 'next/navigation'
 import GameGrid from '@/components/GameGrid'
 import { motion, AnimatePresence } from 'framer-motion'
+import { User, Circle, Square } from 'lucide-react'; // Import icons
 
 let socket
 
@@ -75,7 +76,7 @@ export default function GamePage() {
       const completed = Object.values(gameState.boxes).filter(b => b.owner).length
       setBoxesCompleted(completed)
 
-      setMessage(`Game started! It's ${gameState.players[0]?.user?.username || 'Player 1'}'s turn`)
+      setMessage(``)
     })
 
     socket.on('playerJoined', (data) => {
@@ -146,61 +147,55 @@ export default function GamePage() {
   }, [code, userId, router])
 
   // Calculate game end status whenever boxesCompleted changes
-useEffect(() => {
-  if (boxesCompleted === totalBoxes && totalBoxes > 0) {
-    // Calculate winner
-    if (players.length === 0) return
-    
-    const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
-    const isTie = sortedPlayers.length > 1 && 
-                 sortedPlayers[0].score === sortedPlayers[1].score
-    
-    setGameEnded({
-      isEnded: true,
-      isTie,
-      winnerId: isTie ? null : sortedPlayers[0].userId
-    })
-    
-    if (isTie) {
-      setMessage('Game ended in a tie!')
-    } else {
-      const winner = players.find(p => p.userId === sortedPlayers[0].userId)
-      setMessage(`${winner?.user?.username || 'Someone'} wins!`)
+  useEffect(() => {
+    if (boxesCompleted === totalBoxes && totalBoxes > 0) {
+      // Calculate winner
+      if (players.length === 0) return
+
+      const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
+      const isTie = sortedPlayers.length > 1 &&
+        sortedPlayers[0].score === sortedPlayers[1].score
+
+      setGameEnded({
+        isEnded: true,
+        isTie,
+        winnerId: isTie ? null : sortedPlayers[0].userId
+      })
+
+      if (isTie) {
+        setMessage('Game ended in a tie!')
+      } else {
+        const winner = players.find(p => p.userId === sortedPlayers[0].userId)
+        setMessage(`${winner?.user?.username || 'Someone'} wins!`)
+      }
     }
-  }
-}, [boxesCompleted, totalBoxes, players])
+  }, [boxesCompleted, totalBoxes, players])
 
-// Add this new useEffect for backend completion event
-useEffect(() => {
-  if (!socket) return
+  // Add this new useEffect for backend completion event
+  useEffect(() => {
+    if (!socket) return
 
-  const handleGameCompleted = (data) => {
-    console.log('Game completed event received', data)
-    // Ensure our local state matches the final server state
-    if (data.finalState) {
-      setGameState(data.finalState)
-      // Update boxes completed count
-      const completed = Object.values(data.finalState.boxes).filter(b => b.owner).length
-      setBoxesCompleted(completed)
+    const handleGameCompleted = (data) => {
+      console.log('Game completed event received', data)
+      // Ensure our local state matches the final server state
+      if (data.finalState) {
+        setGameState(data.finalState)
+        // Update boxes completed count
+        const completed = Object.values(data.finalState.boxes).filter(b => b.owner).length
+        setBoxesCompleted(completed)
+      }
     }
-  }
 
-  socket.on('gameCompleted', handleGameCompleted)
-  
-  return () => {
-    if (socket) socket.off('gameCompleted', handleGameCompleted)
-  }
-}, [socket])
+    socket.on('gameCompleted', handleGameCompleted)
+
+    return () => {
+      if (socket) socket.off('gameCompleted', handleGameCompleted)
+    }
+  }, [socket])
 
 
   const handleLineClick = (lineId) => {
     if (!gameState || currentPlayerId !== userId) return
-
-    console.log('handleLineClick lineId:', lineId);
-    console.log('handleLineClick gameState:', gameState);
-    console.log('handleLineClick currentPlayerId:', currentPlayerId);
-    console.log('handleLineClick userId:', userId);
-    console.log('handleLineClick players:', players);
 
     socket.emit('makeMove', { code, line: lineId, userId })
   }
@@ -227,15 +222,15 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-fit bg-gray-900 text-gray-100 ">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-between h-screen">
         {/* Header Section */}
         <motion.div
           initial={{ y: -20 }}
           animate={{ y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-6" // Reduced margin
         >
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
+          <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600 inline-block">
             Game: {code}
           </h1>
 
@@ -245,8 +240,8 @@ useEffect(() => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className={`mt-4 text-lg font-medium ${currentPlayerId === userId ? 'text-blue-400' : 'text-purple-400'
-                  }`}
+                className={`mt-2 text-lg font-medium ${currentPlayerId === userId ? 'text-blue-400' : 'text-purple-400'
+                  }`} // Reduced margin
               >
                 {message}
               </motion.p>
@@ -263,19 +258,21 @@ useEffect(() => {
             </motion.div>
           )}
 
-          {/* Game stats with glow effect */}
-          <div className="mt-6 flex justify-center gap-6">
-            <div className="bg-gray-800/50 px-6 py-3 rounded-xl border border-gray-700 shadow-lg shadow-blue-500/10">
-              <p className="text-sm text-gray-400">Boxes Completed</p>
-              <p className="text-2xl font-bold text-blue-400">
+          {/* Game stats - smaller size, top placement */}
+          <div className="mt-4 flex justify-center gap-4"> {/* Reduced margin */}
+            <div className="bg-gray-800/50 px-4 py-2 rounded-xl border border-gray-700 shadow-md shadow-blue-500/10 flex items-center gap-2"> {/* Reduced padding and font size */}
+              <Square className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-gray-400">Completed:</span>
+              <span className="text-lg font-bold text-blue-400">
                 {boxesCompleted}<span className="text-gray-500">/{totalBoxes}</span>
-              </p>
+              </span>
             </div>
-            <div className="bg-gray-800/50 px-6 py-3 rounded-xl border border-gray-700 shadow-lg shadow-purple-500/10">
-              <p className="text-sm text-gray-400">Boxes Remaining</p>
-              <p className="text-2xl font-bold text-purple-400">
+            <div className="bg-gray-800/50 px-4 py-2 rounded-xl border border-gray-700 shadow-md shadow-purple-500/10 flex items-center gap-2">
+              <Square className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-gray-400">Remaining:</span>
+              <span className="text-lg font-bold text-purple-400">
                 {totalBoxes - boxesCompleted}
-              </p>
+              </span>
             </div>
           </div>
         </motion.div>
@@ -340,83 +337,20 @@ useEffect(() => {
                 >
                   Return to Lobby
                 </button>
+
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Players section */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 mb-8 border border-gray-700 shadow-lg"
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-300">Players</h2>
-            <div className="text-sm font-medium">
-              {currentPlayerId === userId ? (
-                <span className="px-3 py-1 rounded-full bg-blue-900/50 text-blue-400 border border-blue-500/50">
-                  Your turn
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-full bg-purple-900/50 text-purple-400 border border-purple-500/50">
-                  Waiting
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {players.map((player) => (
-              <motion.div
-                key={player.userId}
-                whileHover={{ scale: 1.02 }}
-                className={`p-4 rounded-lg transition-all duration-300 ${currentPlayerId === player.userId
-                  ? 'bg-blue-900/20 border border-blue-500/30 shadow-lg shadow-blue-500/10'
-                  : 'bg-gray-700/30 border border-gray-600/30'
-                } ${player.userId === userId ? 'ring-1 ring-blue-400/30' : ''
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <span
-                      className="w-3 h-3 rounded-full mr-3 flex-shrink-0 shadow-sm shadow-current"
-                      style={{
-                        backgroundColor: playerColors[player.userId],
-                        boxShadow: `0 0 6px ${playerColors[player.userId]}`
-                      }}
-                    />
-                    <div>
-                      <h3 className={`font-medium ${player.userId === userId ? 'text-blue-400' : 'text-gray-300'
-                        }`}>
-                        {player.user?.username}
-                        {player.userId === userId && " (You)"}
-                      </h3>
-                      <p className="text-xs text-gray-400">
-                        Score: <span className="font-bold" style={{ color: playerColors[player.userId] }}>
-                          {player.score || 0}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  {currentPlayerId === player.userId && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900/50 text-blue-400 border border-blue-500/50">
-                      Current
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+        {/* Players section - inline display */}
 
         {/* Game board */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-xl p-6 mx-auto border border-gray-700 shadow-lg overflow-auto"
+          className="rounded-xl h-[55vh] border border-indigo-600 rounded-xl border shadow-lg shadow-indigo-500/10"
         >
           <GameGrid
             gridSize={gameState?.gridSize}
@@ -424,11 +358,57 @@ useEffect(() => {
             boxes={gameState?.boxes}
             currentPlayerId={currentPlayerId}
             userId={userId}
-            players={players} 
+            players={players}
             playerColors={playerColors}
             onLineClick={handleLineClick}
           />
         </motion.div>
+
+
+        {/* players  */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex justify-center gap-6 mt-6" // Changed to flex and gap
+        >
+          {players.map((player) => (
+            <div
+              key={player.userId}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300
+                ${currentPlayerId === player.userId
+                  ? 'bg-blue-900/20 border border-blue-500/30 shadow-md shadow-blue-500/10'
+                  : 'bg-gray-700/30 border border-gray-600/30'
+                }
+                ${player.userId === userId ? 'ring-1 ring-blue-400/30' : ''}`}
+            >
+              <span
+                className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm shadow-current"
+                style={{
+                  backgroundColor: playerColors[player.userId],
+                  boxShadow: `0 0 6px ${playerColors[player.userId]}`
+                }}
+              />
+              <div>
+                <div className={`font-medium ${player.userId === userId ? 'text-blue-400' : 'text-gray-300'}`}>
+                  {player.user?.username}
+                  {player.userId === userId && " (You)"}
+                </div>
+                <div className="text-xs text-gray-400">
+                  Score: <span className="font-bold" style={{ color: playerColors[player.userId] }}>
+                    {player.score || 0}
+                  </span>
+                </div>
+              </div>
+              {currentPlayerId === player.userId && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-900/50 text-blue-400 border border-blue-500/50">
+                  Turn
+                </span>
+              )}
+            </div>
+          ))}
+        </motion.div>
+
       </div>
     </div>
   )
