@@ -1,11 +1,11 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import io from 'socket.io-client'
 import { useParams } from 'next/navigation'
 import GameGrid from '@/components/GameGrid'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, Circle, Square } from 'lucide-react'; // Import icons
+import { Square } from 'lucide-react'
+import { createGameSocket } from '@/utils/socket'
 
 let socket
 
@@ -46,12 +46,18 @@ export default function GamePage() {
     if (!code || !userId) return
     console.log('use effect triggered ...................')
 
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000', {
-      transports: ['websocket'],
-      upgrade: false
-    })
+    socket = createGameSocket()
 
     socket.emit('joinGame', { code, userId })
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connection error:', err)
+      setError('Starting the game server. This can take up to a minute after inactivity.')
+    })
+
+    socket.io.on('reconnect_failed', () => {
+      setError('Failed to connect to the game server. Please refresh and try again.')
+    })
 
     socket.on('gameJoined', (data) => {
       console.log('gameJoined data:', data);
@@ -78,6 +84,19 @@ export default function GamePage() {
 
       setMessage(``)
     })
+
+    const handleGameCompleted = (data) => {
+      console.log('Game completed event received', data)
+      // Ensure our local state matches the final server state
+      if (data.finalState) {
+        setGameState(data.finalState)
+        // Update boxes completed count
+        const completed = Object.values(data.finalState.boxes).filter(b => b.owner).length
+        setBoxesCompleted(completed)
+      }
+    }
+
+    socket.on('gameCompleted', handleGameCompleted)
 
     socket.on('playerJoined', (data) => {
       console.log('playerJoined data:', data);
@@ -141,6 +160,7 @@ export default function GamePage() {
 
     return () => {
       if (socket) {
+        socket.off('gameCompleted', handleGameCompleted)
         socket.disconnect()
       }
     }
@@ -171,29 +191,6 @@ export default function GamePage() {
     }
   }, [boxesCompleted, totalBoxes, players])
 
-  // Add this new useEffect for backend completion event
-  useEffect(() => {
-    if (!socket) return
-
-    const handleGameCompleted = (data) => {
-      console.log('Game completed event received', data)
-      // Ensure our local state matches the final server state
-      if (data.finalState) {
-        setGameState(data.finalState)
-        // Update boxes completed count
-        const completed = Object.values(data.finalState.boxes).filter(b => b.owner).length
-        setBoxesCompleted(completed)
-      }
-    }
-
-    socket.on('gameCompleted', handleGameCompleted)
-
-    return () => {
-      if (socket) socket.off('gameCompleted', handleGameCompleted)
-    }
-  }, [socket])
-
-
   const handleLineClick = (lineId) => {
     if (!gameState || currentPlayerId !== userId) return
 
@@ -214,6 +211,9 @@ export default function GamePage() {
               <div className="space-y-3">
                 <div className="h-4 bg-indigo-900 rounded w-5/6 mx-auto"></div>
               </div>
+              {error && (
+                <p className="text-sm text-indigo-200 max-w-sm mx-auto">{error}</p>
+              )}
             </div>
           </div>
         </motion.div>

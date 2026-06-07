@@ -1,11 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import io from 'socket.io-client';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { createGameSocket } from '@/utils/socket';
 
 let socket;
 
@@ -74,15 +73,20 @@ export default function Home() {
       console.log('User ID saved to localStorage:', userId);
     }
 
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || 'https://dot-box-server.onrender.com', {
-      transports: ['websocket'],
-      upgrade: false
-    });
-    console.log('Socket connection established');
+    socket = createGameSocket({ autoConnect: false });
 
     socket.on('connect_error', (err) => {
       console.error('Socket connection error:', err);
-      setError('Failed to connect to the game server.');
+      setError('Starting the game server. This can take up to a minute after inactivity.');
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket connected');
+      setError('');
+    });
+
+    socket.io.on('reconnect_failed', () => {
+      setError('Failed to connect to the game server. Please try again.');
       setIsLoading(false);
     });
 
@@ -107,6 +111,7 @@ export default function Home() {
       socket.off('error');
       socket.off('gameCreated');
       socket.off('gameJoined');
+      socket.disconnect();
     };
   }, [userId, router]);
 
@@ -131,6 +136,7 @@ export default function Home() {
       return;
     }
 
+    socket.connect();
     socket.emit('createGame', { gridSize, userId, username: localUsername });
   };
 
@@ -153,6 +159,7 @@ export default function Home() {
 
     console.log('username:', localUsername);
 
+    socket.connect();
     socket.emit('joinGame', { code: gameCode.toUpperCase(), userId, username: localUsername });
   };
 
